@@ -1,0 +1,16 @@
+[package]
+name = "riscv-assembler-rust"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "assembler"
+path = "app/src/main.rs"
+
+[workspace]
+members = [
+    "libs/interface",
+    "libs/fileio", 
+    "libs/translator"]
+
+[dependencies]

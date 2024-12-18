@@ -1,0 +1,22 @@
+[
+    {
+        "test_num": 1,
+        "input" : [
+            "ori"
+        ],
+        "check_value": [
+            "ori"
+        ]
+    }, 
+    {
+        "test_num": 2,
+        "input" : [
+            "ori",
+            "and"
+        ],
+        "check_value": [
+            "ori",
+            "and"
+        ]
+    }
+]
