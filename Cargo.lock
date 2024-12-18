@@ -3,17 +3,18 @@
 version = 4
 
 [[package]]
-name = "fileio"
+name = "data_structures"
 version = "0.1.0"
 dependencies = [
- "interface",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
-name = "interface"
+name = "fileio"
 version = "0.1.0"
 dependencies = [
+ "data_structures",
  "serde",
  "serde_json",
 ]
@@ -105,8 +106,7 @@ dependencies = [
 name = "translator"
 version = "0.1.0"
 dependencies = [
- "interface",
- "serde_json",
+ "data_structures",
 ]
 
 [[package]]

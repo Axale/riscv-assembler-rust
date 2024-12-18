@@ -1,5 +1,130 @@
 use std::collections::LinkedList;
-use std::{clone, cmp};
+use std::cmp;
+
+
+#[derive(Clone)]
+
+pub enum InstType {R, I, S, B, U, J}
+
+
+#[derive(Clone)]
+pub struct Reg {
+    pub reg_num : u32  // register number
+}
+
+#[derive(Clone)]
+pub struct Inst {
+    pub opcode :  u32, // Opcode field
+    pub funct3  : u32, // Funct3 field
+    pub funct7  : u32, // Funct7 field
+    pub inst_type : InstType // Instruction type
+}
+pub struct ExtractedData<T>
+where 
+    T : std::clone::Clone
+{
+    data: T, // Data
+    key: String //
+}
+
+#[derive(Clone)]
+pub struct HashNode<T> 
+where 
+    T : std::clone::Clone
+{
+    data : T, // Data
+    key : u32, 
+    next_node : Option<Box<HashNode<T>>>
+}
+
+pub struct HashMap<T> 
+where 
+    T : std::clone::Clone
+{
+    size: u32, // size, will use as modulo
+    hash_vect : Vec<Option<Box<HashNode<T>>>>
+}
+
+impl<T> HashMap<T> 
+where 
+    T : std::clone::Clone
+{
+    pub fn new(size : u32) -> Self {
+        Self { 
+            hash_vect: vec![None; size as usize],
+            size: size, 
+        }
+    }
+
+    // Hashes a string
+    pub fn hash_str(&self, key: &str) -> u32 {
+        let n: u32 = 1;
+        let mut hash_key: u32 = 0;
+        
+        for chr in key.chars() {
+            if !chr.is_alphanumeric() {
+                panic!("Invalid Character");
+            }
+            // 
+            hash_key +=  (chr.to_ascii_lowercase() as u32) * n;
+        }
+        return hash_key;
+    }
+
+
+    fn insert(&mut self, dat : &T, key : &str) {
+        if key.len() > 10 {
+            panic!("Invalid Instruction!");
+        }
+        let hash_key = HashMap::hash_str(&self,key);
+        let index = (hash_key % self.size) as usize;
+
+
+        let mut new_node = Box::new(
+            HashNode {
+                data: dat.clone(),
+                key: hash_key,
+                next_node: None
+            }
+        );
+
+        new_node.next_node = self.hash_vect[index].take();
+
+        self.hash_vect[index] = Some(new_node);
+        return;
+    }
+
+    pub fn build(&mut self, extracted_data : &Vec::<ExtractedData<T>>) {
+        for node in extracted_data{
+            self.insert(&node.data, &(node.key[..]));
+        }
+    }
+
+    pub fn get(&self, key : &str) -> Option<&T>{
+        
+        if key.len() > 10 {
+            return None
+        }
+
+        let hash = HashMap::hash_str(&self, key);
+        let index = (hash % self.size) as usize;
+
+        let mut curr = &self.hash_vect[index];
+        if curr.is_none() {
+            panic!("Invalid Key!"); // Panics to be removed in the future
+        }
+
+        while let Some(node) = curr {
+            if node.key == hash {
+                return Some(&node.data);
+            }
+            curr = &node.next_node;
+        }
+
+        None
+    }
+}
+
 
 // Fully Parsed Instruction, containing the machine code and the instruction address
 #[derive(Debug ,serde::Deserialize)]
@@ -48,6 +173,14 @@ impl DataInterface {
 
     pub fn pop_parsed(&mut self) -> Option <ParsedNode> {
         return self.parsed.pop_front();
+    }
+
+    pub fn lines_len(&self) -> usize {
+        self.lines.len()
+    }
+    
+    pub fn parsed_len(&self) -> usize {
+        self.parsed.len()
     }
 
 }

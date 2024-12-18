@@ -1,13 +1,13 @@
 use std::{fmt, fs, path::PathBuf};
-use interface::*;
-use serde_json::*;
+data_structures::*
+use serde::*;
 #[derive(serde::Deserialize, Debug)]
 
 pub struct FileIO {
 }
 
 impl FileIO {
-    pub fn open_code(&mut self, path: &PathBuf, di : &DataInterface){
+    pub fn open_code(&mut self, path: &PathBuf, di : &mut DataInterface){
         let content: String = fs::read_to_string(path)
             .expect("Failed to read code!");
         let strvec = content.split('\n');
@@ -19,7 +19,7 @@ impl FileIO {
     }
 
     // Takes each parsed instruction and forms a line of intel hex with it
-    fn form_line(&mut self, node : &ParsedNode) -> Option<String> {
+    fn form_line(node : &ParsedNode) -> Option<String> {
         let mut line: String = "04".to_owned();
         // Formats address to only 4 bytes
         line.push_str(&format!("{:04X}", node.address)[..]);
@@ -40,7 +40,7 @@ impl FileIO {
         for pair in pair_vect.iter() {
             let fm_hex =u8::from_str_radix(pair, 16)
                 .expect("Invalid String");
-            checksum += checksum + fm_hex;
+            checksum = checksum.wrapping_add(fm_hex);
         }
         checksum = !checksum + 1;
 
@@ -48,6 +48,7 @@ impl FileIO {
         line.push_str(&format!("{:02X}", checksum));
         let mut ret_string: String = ":".to_owned();
         ret_string.push_str(&line[..]);
+        ret_string.push('\n');
 
         return Some(ret_string);
     }
@@ -64,8 +65,11 @@ mod tests {
         check_value : CHK
     }
 
-    fn load_tests<IN, CHK>(json_name : &str) -> Vec<Test<IN, CHK>> {
-        let test_vec: Vec<Test<IN, CHK>>;
+    fn load_tests<IN, CHK>(json_name : &str) -> Vec<Test<IN, CHK>> 
+    where 
+        IN: serde::de::DeserializeOwned, // IN must implement deserialize
+        CHK: serde::de::DeserializeOwned, // OUT must implement deserialize
+    {
         let path = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join(json_name);
@@ -79,7 +83,10 @@ mod tests {
         let tests: Vec<Test<ParsedNode, String>>= load_tests::<ParsedNode, String>("test_form_line.json");
         
         for curr_test in tests.iter() {
-            
+            let test_num = curr_test.test_num;
+            let out = FileIO::form_line(&curr_test.input).expect("form_line failed!");
+            assert_eq!(out, curr_test.check_value,
+                "Test # `{test_num}` failed.");
         }
     }
     

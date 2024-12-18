@@ -1,0 +1,66 @@
+[
+    {
+    "test_num": 1,
+    "input": {
+        "instruction": 2864434397,
+        "address": 4660
+    },
+    "check_value": ":04123400AABBCCDDA8\n"
+    },
+    {
+    "test_num": 2,
+    "input": {
+        "instruction": 0,
+        "address": 0
+    },
+    "check_value": ":0400000000000000FC\n"
+    },
+    {
+    "test_num": 3,
+    "input": {
+        "instruction": 0,
+        "address": 65535
+    },
+    "check_value": ":04FFFF0000000000FE\n"
+    },
+    {
+    "test_num": 4,
+    "input": {
+        "instruction": 4294967295,
+        "address": 65535
+    },
+    "check_value": ":04FFFF00FFFFFFFF02\n"
+    },
+    {
+    "test_num": 5,
+    "input": {
+        "instruction": 19088743,
+        "address": 65280
+    },
+    "check_value": ":04FF0000012345672D\n"
+    },
+    {
+    "test_num": 6,
+    "input": {
+        "instruction": 1193046,
+        "address": 1
+    },
+    "check_value": ":04000100001234565F\n"
+    },
+    {
+    "test_num": 7,
+    "input": {
+        "instruction": 1234567890,
+        "address": 12345
+    },
+    "check_value": ":04303900499602D2E0\n"
+    },
+    {
+    "test_num": 8,
+    "input": {
+        "instruction": 305419896,
+        "address": 0
+    },
+    "check_value": ":0400000012345678E8\n"
+    }
+]

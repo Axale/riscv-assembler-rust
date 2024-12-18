@@ -9,7 +9,7 @@ path = "app/src/main.rs"
 
 [workspace]
 members = [
-    "libs/interface",
+    "libs/data_structures",
     "libs/fileio", 
     "libs/translator"]
 
