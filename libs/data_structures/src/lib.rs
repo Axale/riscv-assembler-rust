@@ -1,5 +1,6 @@
 use std::collections::LinkedList;
-use std::cmp;
+use std::io::Error;
+use std::{cmp, io};
 
 
 #[derive(Clone)]
@@ -57,18 +58,21 @@ where
     }
 
     // Hashes a string
-    pub fn hash_str(&self, key: &str) -> u32 {
-        let n: u32 = 1;
+    pub fn hash_str(&self, key: &str) -> Result<u32, io::Error> {
+        let mut n: u32 = 1;
         let mut hash_key: u32 = 0;
         
         for chr in key.chars() {
             if !chr.is_alphanumeric() {
-                panic!("Invalid Character");
+                return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                    "Hash Function: Input was not alphanumeric"));
             }
-            // 
-            hash_key +=  (chr.to_ascii_lowercase() as u32) * n;
+
+            hash_key +=  (chr.to_ascii_uppercase() as u32) * n;
+            n *= 2;
         }
-        return hash_key;
+
+        return Ok(hash_key);
     }
 
 
@@ -76,7 +80,8 @@ where
         if key.len() > 10 {
             panic!("Invalid Instruction!");
         }
-        let hash_key = HashMap::hash_str(&self,key);
+        let hash_key = HashMap::hash_str(&self,key)
+            .expect("There is a non-alphanumeric number.");
         let index = (hash_key % self.size) as usize;
 
 
@@ -100,13 +105,16 @@ where
         }
     }
 
-    pub fn get(&self, key : &str) -> Option<&T>{
+    pub fn get(&self, key : &str) -> Result<&T, io::Error>{
         
         if key.len() > 10 {
-            return None
+            return Err(
+                io::Error::new(io::ErrorKind::InvalidInput,"Key too long!")
+            );
         }
 
-        let hash = HashMap::hash_str(&self, key);
+        let hash = HashMap::hash_str(&self, key)
+            .expect("Hash function failed: Invalid Input.");
         let index = (hash % self.size) as usize;
 
         let mut curr = &self.hash_vect[index];
@@ -116,12 +124,14 @@ where
 
         while let Some(node) = curr {
             if node.key == hash {
-                return Some(&node.data);
+                return Ok(&(node.data));
             }
             curr = &node.next_node;
         }
 
-        None
+        return Err(
+            io::Error::new(io::ErrorKind::InvalidData,"Failed to find entry!")
+        )
     }
 }
 
@@ -189,6 +199,7 @@ impl DataInterface {
 mod tests {
     use super::*;
     use std::fs;
+    use std::hash::Hash;
     use std::path::PathBuf;
     
     #[derive(serde::Deserialize)]
@@ -197,6 +208,22 @@ mod tests {
         input : IN,
         check_value : CHK
     }
+    
+    // Grabs test from a local json.
+    fn load_tests<IN, CHK>(json_name : &str) -> Vec<Test<IN, CHK>> 
+    where 
+        IN: serde::de::DeserializeOwned, // IN must implement deserialize
+        CHK: serde::de::DeserializeOwned, // OUT must implement deserialize
+    {
+        let path = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join(json_name);
+
+        let content = fs::read_to_string(&path)
+            .expect(&format!("Failed to read file: {:?}", path));
+        return serde_json::from_str(&content).expect("Failed to parse JSON");
+    }
+
     #[test]
     fn test_add_line() {
         let test_vec: Vec<Test<Vec<String>, LinkedList<String>>>;
@@ -243,5 +270,24 @@ mod tests {
                 "Test # `{test_num}` failed.");
             drop(di);
         }
+    }
+
+    #[test] 
+    fn test_hash_string() {
+        let test_vec : Vec<Test<String, u32>>;
+        test_vec = load_tests("test_hash_working.json");
+        
+        let test_hm: HashMap::<u32>;
+        test_hm = HashMap::<u32>::new(2);
+        
+        for t in test_vec {
+            let test_num = t.test_num;
+            let out = test_hm.hash_str(&t.input)
+                .expect("Test #`{test_num}` Failed :(");
+            
+            assert_eq!(out, t.check_value);
+        }
+
+        return;
     }
 }

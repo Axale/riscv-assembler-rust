@@ -1,0 +1,52 @@
+[
+    {
+        "test_num": 1,
+        "input": "a",
+        "check_value": 65
+    },
+    {
+        "test_num": 2,
+        "input": "abc",
+        "check_value": 465
+    },
+    {
+        "test_num": 3,
+        "input": "123",
+        "check_value": 353
+    },
+    {
+        "test_num": 4,
+        "input": "Test1",
+        "check_value": 2010
+    },
+    {
+        "test_num": 5,
+        "input": "9aB2cD",
+        "check_value": 4099
+    },
+    {
+        "test_num": 6,
+        "input": "hash",
+        "check_value": 1110
+    },
+    {
+        "test_num": 7,
+        "input": "CAPS",
+        "check_value": 1181
+    },
+    {
+        "test_num": 8,
+        "input": "a1b2c3",
+        "check_value": 3531
+    },
+    {
+        "test_num": 9,
+        "input": "short",
+        "check_value": 2543
+    },
+    {
+        "test_num": 10,
+        "input": "0",
+        "check_value": 48
+    }
+]

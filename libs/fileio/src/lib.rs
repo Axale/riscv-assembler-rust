@@ -1,5 +1,5 @@
 use std::{fmt, fs, path::PathBuf};
-data_structures::*
+use data_structures::*;
 use serde::*;
 #[derive(serde::Deserialize, Debug)]
 
