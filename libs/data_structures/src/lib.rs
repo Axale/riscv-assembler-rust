@@ -1,11 +1,10 @@
 use std::collections::LinkedList;
-use std::io::Error;
 use std::{cmp, io};
 
 
 #[derive(Clone)]
 
-pub enum InstType {R, I, S, B, U, J}
+pub enum InstType {R, I, S, B, U, J, META}
 
 
 #[derive(Clone)]
@@ -20,6 +19,7 @@ pub struct Inst {
     pub funct7  : u32, // Funct7 field
     pub inst_type : InstType // Instruction type
 }
+
 pub struct ExtractedData<T>
 where 
     T : std::clone::Clone
@@ -76,12 +76,17 @@ where
     }
 
 
-    fn insert(&mut self, dat : &T, key : &str) {
+    // Add copy-cat handling.
+    pub fn insert(&mut self, dat : &T, key : &str) -> bool{
         if key.len() > 10 {
-            panic!("Invalid Instruction!");
+            return false;
         }
-        let hash_key = HashMap::hash_str(&self,key)
-            .expect("There is a non-alphanumeric number.");
+        let hash_key_res = HashMap::hash_str(&self,key);
+        if hash_key_res.is_err() {
+            return false;
+        }
+
+        let hash_key = hash_key_res.unwrap();
         let index = (hash_key % self.size) as usize;
 
 
@@ -96,7 +101,7 @@ where
         new_node.next_node = self.hash_vect[index].take();
 
         self.hash_vect[index] = Some(new_node);
-        return;
+        true
     }
 
     pub fn build(&mut self, extracted_data : &Vec::<ExtractedData<T>>) {
@@ -105,12 +110,10 @@ where
         }
     }
 
-    pub fn get(&self, key : &str) -> Result<&T, io::Error>{
+    pub fn get(&self, key : &str) -> Option<&T>{
         
         if key.len() > 10 {
-            return Err(
-                io::Error::new(io::ErrorKind::InvalidInput,"Key too long!")
-            );
+            return None
         }
 
         let hash = HashMap::hash_str(&self, key)
@@ -124,14 +127,12 @@ where
 
         while let Some(node) = curr {
             if node.key == hash {
-                return Ok(&(node.data));
+                return Some(&node.data);
             }
             curr = &node.next_node;
         }
 
-        return Err(
-            io::Error::new(io::ErrorKind::InvalidData,"Failed to find entry!")
-        )
+        None
     }
 }
 
@@ -199,7 +200,6 @@ impl DataInterface {
 mod tests {
     use super::*;
     use std::fs;
-    use std::hash::Hash;
     use std::path::PathBuf;
     
     #[derive(serde::Deserialize)]

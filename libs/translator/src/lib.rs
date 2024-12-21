@@ -1,9 +1,9 @@
-use std::array;
 
 use data_structures::*;
 pub struct  Translator <'a> {
     inst_hm : HashMap<Vec<Inst>>, // HashMap with instructions
     reg_hm: HashMap<Reg>, // Hashmap with registers
+    label_hm: HashMap<u16>, // Hashmap of labels
     curr_address : u16,
     di: &'a mut DataInterface
 }
@@ -13,6 +13,7 @@ impl <'a> Translator <'a> {
         Self {
             inst_hm : HashMap::new(inst_size),
             reg_hm : HashMap::new(reg_size),
+            label_hm : HashMap::new(16),
             di : __di,
             curr_address: 0
         }
@@ -27,7 +28,7 @@ impl <'a> Translator <'a> {
 
     // Pops a new line, splits the line, and parses the instruction and registers/immediates.
     // At the moment, ignores everything past the 3rd argument, will be fixed later.
-    fn rtype (&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
+    fn rtype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
         // Adds each of the operators, shofting them over.
         let shift_arr = [0, 7, 15, 20];
@@ -46,7 +47,7 @@ impl <'a> Translator <'a> {
 
     // i-type
     // Will need to add compatability for hex
-    fn itype (&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
+    fn itype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
         // Adds each of the operators, shofting them over.
         let shift_arr = [0, 7, 15];
@@ -66,7 +67,7 @@ impl <'a> Translator <'a> {
     }
     
     // No big difference for this one, just the immediate is broken up into two
-    fn stype (&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
+    fn stype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
         // Adds each of the operators, shofting them over.
         let shift_arr = [0, 15, 20];
@@ -87,7 +88,7 @@ impl <'a> Translator <'a> {
     }
 
     // Also similar to S-Type
-    fn btype (&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
+    fn btype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
         // Adds each of the operators, shofting them over.
         let shift_arr = [0, 15, 20];
@@ -108,7 +109,7 @@ impl <'a> Translator <'a> {
     }
     
 
-    fn utype (&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
+    fn utype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
         // Adds each of the operators, shofting them over.
         let shift_arr = [7];
@@ -122,12 +123,12 @@ impl <'a> Translator <'a> {
             new_parsed.instruction |= (0b11111 & reg.reg_num) << shift_arr[i];
         }
         let imm = u32::from_str_radix(broken_line[3], 10).expect("Bad immediate");
-        new_parsed.instruction |= (imm & 0xFFFFF000);
+        new_parsed.instruction |= imm & 0xFFFFF000;
         
         return true;
     }
     
-    fn jtype (&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
+    fn jtype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
         // Adds each of the operators, shofting them over.
         let shift_arr = [7];
@@ -149,10 +150,26 @@ impl <'a> Translator <'a> {
         
         return true;
     }
+
+    fn parse_label(&mut self, label : &str) -> bool {
+        let last_char = label.as_bytes()
+            .last()
+            .expect("Failed to convert to a byte.");
+        
+        if  *last_char != b':' {
+            return false;
+        }
+        
+        if self.label_hm.insert(&self.curr_address, label) == false {
+            return false;
+        }
+
+        true
+    }
+
     // Parses a line, breaks the line up into a vector of strings (commas and whitespace used to split)
     // Determines the instruction type and calls the appropriate command
     // Will need some work to add compatibility to meta-instructions (i.e. placing data at specific addresses while assembling)
-    // Also needs some work to make it work with address labels.
     // Returns a bool to indicate success
     fn parse_line(&mut self) -> bool {
         let line_opt = self.di.pop_line();
@@ -160,9 +177,19 @@ impl <'a> Translator <'a> {
             return false;
         }        
 
+        // Unwraps line object, breaks off any comment, then splits the line without comments.
+        // Comments start with #
         let curr_line = line_opt.unwrap();
+        let c_vec: Vec<&str> = curr_line.split(|c| c == '#')
+            .collect();
+        
+        let uncommented_line: String = c_vec[0].to_owned();
+        let broken_line: Vec<&str> = uncommented_line.split(|c| c == ',' || c == ' ' || c == '\n')
+            .collect();
 
-        let broken_line: Vec<&str> = curr_line.split(|c| c == ',' || c == ' ').collect();
+        if broken_line.len() == 1 {
+            return self.parse_label(broken_line[0]);
+        }        
 
         let inst_opt = self.inst_hm.get(broken_line[0]);
         if inst_opt.is_none() {
@@ -172,6 +199,10 @@ impl <'a> Translator <'a> {
         // Vector of instructions that make up an instruction.
         // This so that this can work for both regular and pseudo-instructions
         let inst_vector = inst_opt.unwrap().clone();
+        
+        if matches!(inst_vector[0].inst_type, InstType::META) {
+            self.parse_meta(inst_vector, &broken_line);
+        }
 
         for inst in inst_vector.iter() {
             // Instruction Types, (based on RISC-V Standard)
@@ -199,13 +230,16 @@ impl <'a> Translator <'a> {
                 InstType::J=>{
                     success = self.jtype(&mut new_parsed, &broken_line);
                 },
-                _=> return false
+                _=>{
+                    return false;
+                }
             }
             if success == false {
-                return false;
+                return success;
             }
 
             self.di.add_parsed(&new_parsed);
+            self.curr_address += 1;
         }
 
         return true;
@@ -220,7 +254,6 @@ impl <'a> Translator <'a> {
                 panic!("Failed at line #`{line_num}`");
             }
             line_num += 1;
-            self.curr_address += 1;
         }
     }
 }
