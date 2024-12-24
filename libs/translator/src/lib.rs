@@ -129,7 +129,12 @@ impl <'a> Translator <'a> {
     // Needs to work with both labels and integers.
     fn jtype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
-        // Adds each of the operators, shofting them over.
+        if broken_line.len() != 3 {
+            return false;
+        }
+
+
+        // Adds each of the operators, shifting them over.
         let shift_arr = [7];
         for i in [1] {
             let reg_opt = self.reg_hm.get(broken_line[i]);
@@ -144,11 +149,14 @@ impl <'a> Translator <'a> {
         let conv_out = data_structures::str_to_int(*(broken_line.last().unwrap()));
         let imm : u32; 
         if conv_out.is_err() {
-            imm = 
-*broken_line.last().unwrap();
-
+            let label = *broken_line.last().unwrap();
+            let out = self.label_hm.get(label);
+            if out.is_none() {
+                return false
+            }
+            imm = out.unwrap().clone() as u32;
         } else {
-            imm = conv_out.unwrap();
+            imm = conv_out.unwrap() as u32;
         }
 
 
@@ -209,6 +217,7 @@ impl <'a> Translator <'a> {
         
         let uncommented_line: String = c_vec[0].to_owned();
         let broken_line: Vec<&str> = uncommented_line.split(|c| c == ',' || c == ' ' || c == '\n')
+            .filter(|s| !(*s).is_empty())
             .collect();
 
         if broken_line.len() == 1 {
