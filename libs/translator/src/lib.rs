@@ -26,8 +26,6 @@ impl <'a> Translator <'a> {
         return;
     }
 
-    // Pops a new line, splits the line, and parses the instruction and registers/immediates.
-    // At the moment, ignores everything past the 3rd argument, will be fixed later.
     fn rtype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
         // Adds each of the operators, shofting them over.
@@ -128,6 +126,7 @@ impl <'a> Translator <'a> {
         return true;
     }
     
+    // Needs to work with both labels and integers.
     fn jtype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
         // Adds each of the operators, shofting them over.
@@ -141,7 +140,19 @@ impl <'a> Translator <'a> {
             let reg = reg_opt.unwrap();           
             new_parsed.instruction |= (0b11111 & reg.reg_num) << shift_arr[i];
         }
-        let imm = u32::from_str_radix(broken_line[3], 10).expect("Bad immediate");
+        
+        let conv_out = data_structures::str_to_int(*(broken_line.last().unwrap()));
+        let imm : u32; 
+        if conv_out.is_err() {
+            imm = 
+*broken_line.last().unwrap();
+
+        } else {
+            imm = conv_out.unwrap();
+        }
+
+
+
         // J types have a weird bit placement
         new_parsed.instruction |= imm & 0x000FF000;
         new_parsed.instruction |= (imm & 0x000800) << 9;
@@ -167,9 +178,22 @@ impl <'a> Translator <'a> {
         true
     }
 
+    fn parse_meta(&mut self, inst_vector : &Vec<Inst>, broken_line : &Vec<&str>) -> bool{
+
+        match inst_vector[0].opcode {
+            // Org is one
+            1 => {
+
+            },
+            _=> {
+                return false;
+            }
+        }
+        true
+    }
+
     // Parses a line, breaks the line up into a vector of strings (commas and whitespace used to split)
     // Determines the instruction type and calls the appropriate command
-    // Will need some work to add compatibility to meta-instructions (i.e. placing data at specific addresses while assembling)
     // Returns a bool to indicate success
     fn parse_line(&mut self) -> bool {
         let line_opt = self.di.pop_line();
@@ -201,7 +225,7 @@ impl <'a> Translator <'a> {
         let inst_vector = inst_opt.unwrap().clone();
         
         if matches!(inst_vector[0].inst_type, InstType::META) {
-            self.parse_meta(inst_vector, &broken_line);
+            self.parse_meta(&inst_vector, &broken_line);
         }
 
         for inst in inst_vector.iter() {

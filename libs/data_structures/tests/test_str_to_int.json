@@ -1,0 +1,52 @@
+[
+  {
+    "test_num": 1,
+    "input": "42",
+    "check_value": 42
+  },
+  {
+    "test_num": 2,
+    "input": "0x2A",
+    "check_value": 42
+  },
+  {
+    "test_num": 3,
+    "input": "0h2A",
+    "check_value": 42
+  },
+  {
+    "test_num": 4,
+    "input": "0b101010",
+    "check_value": 42
+  },
+  {
+    "test_num": 5,
+    "input": "0",
+    "check_value": 0
+  },
+  {
+    "test_num": 6,
+    "input": "0x0",
+    "check_value": 0
+  },
+  {
+    "test_num": 7,
+    "input": "0b0",
+    "check_value": 0
+  },
+  {
+    "test_num": 8,
+    "input": "1234567890",
+    "check_value": 1234567890
+  },
+  {
+    "test_num": 9,
+    "input": "0x499602D2",
+    "check_value": 1234567890
+  },
+  {
+    "test_num": 10,
+    "input": "0b100100110010110000001011010010",
+    "check_value": 617284306
+  }
+]

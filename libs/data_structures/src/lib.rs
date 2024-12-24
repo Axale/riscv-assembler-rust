@@ -195,11 +195,34 @@ impl DataInterface {
     }
 
 }
+    
+pub fn str_to_int(src : &str) -> Result<u32, std::num::ParseIntError> {
+    let mut radix = 10;
+    let slc: &str;
+    if src.starts_with("0x") {
+        radix = 16;
+        slc = src.trim_start_matches("0x");
+
+    } else if src.starts_with("0b"){    
+        radix = 2;
+        slc = src.trim_start_matches("0b");
+    
+    } else if src.starts_with("0h") {    
+        radix = 16;
+        slc = src.trim_start_matches("0h");
+
+    } else {
+        slc = src;
+    }
+
+    return u32::from_str_radix(slc, radix);
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
+    use std::num::ParseIntError;
     use std::path::PathBuf;
     
     #[derive(serde::Deserialize)]
@@ -248,6 +271,7 @@ mod tests {
         }
     }
 
+
     #[test]
     fn test_add_parsed() {
         let test_vec: Vec<Test<Vec<ParsedNode>, LinkedList<ParsedNode>>>;
@@ -289,5 +313,19 @@ mod tests {
         }
 
         return;
+    }
+
+    #[test] 
+    fn test_str_to_int() {
+        let test_vec : Vec<Test<String, u32>>;
+        test_vec = load_tests("test_str_to_int.json");
+
+        for t in test_vec {
+            let test_num = t.test_num;
+            let out = str_to_int(&t.input)
+                .expect("Test #`{test_num}` Failed :(");
+            
+            assert_eq!(out, t.check_value);
+        }
     }
 }
