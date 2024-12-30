@@ -1,4 +1,6 @@
 
+use std::{mem::transmute, vec};
+
 use data_structures::*;
 pub struct  Translator <'a> {
     inst_hm : HashMap<Vec<Inst>>, // HashMap with instructions
@@ -26,12 +28,10 @@ impl <'a> Translator <'a> {
         return;
     }
 
-    fn rtype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
-        
-        // Adds each of the operators, shofting them over.
-        let shift_arr = [0, 7, 15, 20];
-        for i in [1, 2, 3] {
+    fn gen_translate(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>, shift_arr : Vec<i32>) -> bool {
+        for i in 1..shift_arr.len() {
             let reg_opt = self.reg_hm.get(broken_line[i]);
+            
             if reg_opt.is_none() {
                 return false;
             }
@@ -39,33 +39,83 @@ impl <'a> Translator <'a> {
             let reg = reg_opt.unwrap();           
             new_parsed.instruction |= (0b11111 & reg.reg_num) << shift_arr[i];
         }
-        
-        return true;
+
+        true
     }
 
+    fn rtype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
+        
+        if broken_line.len() != 4 {
+            return false;
+        }
+        
+        return self.gen_translate(new_parsed, broken_line, vec![0, 7, 15, 20]);
+        
+    }
+
+    // i-type reg
+    fn itype_regular(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool{
+        if (new_parsed.instruction & 0x7F) == 0x3 {
+            return false;
+        }
+
+        if self.gen_translate(new_parsed, broken_line, vec![0, 7, 15]) == false {
+            return false;
+        }
+        
+        let trns_int_res = data_structures::str_to_int(broken_line[3]);
+        if trns_int_res.is_err() {
+            return false;
+        }
+        
+        let trns_int : u32 = trns_int_res.unwrap();
+        new_parsed.instruction |=  trns_int  << 20;
+
+        true
+
+    }
+
+    // i-type ld
+    fn i_type_ld(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool{
+        if (new_parsed.instruction & 0x7F) != 0x3 {
+            return false;
+        }
+
+        let mut reg_opt = self.reg_hm.get(broken_line[i]);
+        if reg_opt.is_none() {
+            return false;
+        }
+
+        let mut reg = reg_opt.unwrap();
+        new_parsed.instruction |= (0b11111 * reg.reg_num) << 7;
+        
+
+
+        true
+    }
+
+
     // i-type
-    // Will need to add compatability for hex
     fn itype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
-        // Adds each of the operators, shofting them over.
-        let shift_arr = [0, 7, 15];
-        for i in [1, 2] {
-            let reg_opt = self.reg_hm.get(broken_line[i]);
-            if reg_opt.is_none() {
-                return false;
-            }
+        // Need to consider two formats for i-type instructions.
+        if broken_line.len() == 4 {
+            return self.itype_regular(new_parsed, broken_line);
 
-            let reg = reg_opt.unwrap();           
-            new_parsed.instruction |= (0b11111 & reg.reg_num) << shift_arr[i];
+        } else if broken_line.len() == 3 {
+            return self.i_type_ld(new_parsed, broken_line);
         }
-        new_parsed.instruction |= u32::from_str_radix(broken_line[3], 10).expect("Bad immediate")
-            << 20;
+
         
-        return true;
+        return false;
     }
     
     // No big difference for this one, just the immediate is broken up into two
     fn stype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
+        
+        if broken_line.len() != 3 {
+            return false;
+        }
         
         // Adds each of the operators, shofting them over.
         let shift_arr = [0, 15, 20];
@@ -88,6 +138,13 @@ impl <'a> Translator <'a> {
     // Also similar to S-Type
     fn btype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
+        if(broken_line.len() =! 4) {
+            return false;
+        }
+        
+        if self.gen_translate(new_parsed, broken_line, vec![0, 7, 15]) == false {
+            return false;
+        }
         // Adds each of the operators, shofting them over.
         let shift_arr = [0, 15, 20];
         for i in [1, 2] {
@@ -132,7 +189,6 @@ impl <'a> Translator <'a> {
         if broken_line.len() != 3 {
             return false;
         }
-
 
         // Adds each of the operators, shifting them over.
         let shift_arr = [7];
