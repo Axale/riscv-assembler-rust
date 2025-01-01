@@ -81,7 +81,7 @@ impl <'a> Translator <'a> {
             return false;
         }
 
-        let mut reg_opt = self.reg_hm.get(broken_line[i]);
+        let mut reg_opt = self.reg_hm.get(broken_line[1]);
         if reg_opt.is_none() {
             return false;
         }
@@ -89,6 +89,8 @@ impl <'a> Translator <'a> {
         let mut reg = reg_opt.unwrap();
         new_parsed.instruction |= (0b11111 * reg.reg_num) << 7;
         
+        let last_arg = broken_line[2].to_owned();
+        let last_arg_split = broken_line[2].
 
 
         true
@@ -107,10 +109,9 @@ impl <'a> Translator <'a> {
         }
 
         
-        return false;
+        false
     }
     
-    // No big difference for this one, just the immediate is broken up into two
     fn stype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
         if broken_line.len() != 3 {
@@ -138,25 +139,20 @@ impl <'a> Translator <'a> {
     // Also similar to S-Type
     fn btype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
-        if(broken_line.len() =! 4) {
+        if(broken_line.len() != 4) {
             return false;
         }
         
-        if self.gen_translate(new_parsed, broken_line, vec![0, 7, 15]) == false {
+        if self.gen_translate(new_parsed, broken_line, vec![0, 15, 20]) == false {
             return false;
         }
-        // Adds each of the operators, shofting them over.
-        let shift_arr = [0, 15, 20];
-        for i in [1, 2] {
-            let reg_opt = self.reg_hm.get(broken_line[i]);
-            if reg_opt.is_none() {
-                return false;
-            }
 
-            let reg = reg_opt.unwrap();           
-            new_parsed.instruction |= (0b11111 & reg.reg_num) << shift_arr[i];
+        let imm_res = data_structures::str_to_int(broken_line[3]);
+        if imm_res.is_err() {
+            return false;
         }
-        let imm = u32::from_str_radix(broken_line[3], 10).expect("Bad immediate");
+        
+        let imm : u32 = imm_res.unwrap();
         new_parsed.instruction |= (imm & 0b11110 | ((imm & 0x800) >> 11)) << 7;
         new_parsed.instruction |= ((imm & 0x400 >> 1) |  (0b1111100000 & imm)) << 20;
         
@@ -167,17 +163,16 @@ impl <'a> Translator <'a> {
     fn utype(&mut self, new_parsed : &mut ParsedNode, broken_line : &Vec<&str>) -> bool {
         
         // Adds each of the operators, shofting them over.
-        let shift_arr = [7];
-        for i in [1] {
-            let reg_opt = self.reg_hm.get(broken_line[i]);
-            if reg_opt.is_none() {
-                return false;
-            }
-
-            let reg = reg_opt.unwrap();           
-            new_parsed.instruction |= (0b11111 & reg.reg_num) << shift_arr[i];
+        if self.gen_translate(new_parsed, broken_line, vec![0, 7]) == false {
+            return false;
         }
-        let imm = u32::from_str_radix(broken_line[3], 10).expect("Bad immediate");
+        
+        let imm_res = data_structures::str_to_int(broken_line[3]);
+        if imm_res.is_err() {
+            return false;
+        }
+        
+        let imm : u32 = imm_res.unwrap();
         new_parsed.instruction |= imm & 0xFFFFF000;
         
         return true;
@@ -190,18 +185,10 @@ impl <'a> Translator <'a> {
             return false;
         }
 
-        // Adds each of the operators, shifting them over.
-        let shift_arr = [7];
-        for i in [1] {
-            let reg_opt = self.reg_hm.get(broken_line[i]);
-            if reg_opt.is_none() {
-                return false;
-            }
-
-            let reg = reg_opt.unwrap();           
-            new_parsed.instruction |= (0b11111 & reg.reg_num) << shift_arr[i];
+        if self.gen_translate(new_parsed, broken_line, vec![0, 7]) == false {
+            return false;
         }
-        
+
         let conv_out = data_structures::str_to_int(*(broken_line.last().unwrap()));
         let imm : u32; 
         if conv_out.is_err() {
@@ -215,8 +202,6 @@ impl <'a> Translator <'a> {
             imm = conv_out.unwrap() as u32;
         }
 
-
-
         // J types have a weird bit placement
         new_parsed.instruction |= imm & 0x000FF000;
         new_parsed.instruction |= (imm & 0x000800) << 9;
@@ -226,7 +211,7 @@ impl <'a> Translator <'a> {
         return true;
     }
 
-    fn parse_label(&mut self, label : &str) -> bool {
+    fn add_label(&mut self, label : &str) -> bool {
         let last_char = label.as_bytes()
             .last()
             .expect("Failed to convert to a byte.");
@@ -276,8 +261,8 @@ impl <'a> Translator <'a> {
             .filter(|s| !(*s).is_empty())
             .collect();
 
-        if broken_line.len() == 1 {
-            return self.parse_label(broken_line[0]);
+        if broken_line.len() == 1 && broken_line[0].ends_with(|c| c == ':'){
+            return self.add_label(broken_line[0]);
         }        
 
         let inst_opt = self.inst_hm.get(broken_line[0]);

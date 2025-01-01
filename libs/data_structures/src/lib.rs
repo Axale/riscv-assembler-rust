@@ -4,7 +4,7 @@ use std::{cmp, io};
 
 #[derive(Clone)]
 
-pub enum InstType {R, I, S, B, U, J, META}
+pub enum InstType {R, I, S, B, U, J, META, PSEUDO}
 
 
 #[derive(Clone)]
@@ -14,9 +14,12 @@ pub struct Reg {
 
 #[derive(Clone)]
 pub struct Inst {
-    pub opcode :  u32, // Opcode field
-    pub funct3  : u32, // Funct3 field
-    pub funct7  : u32, // Funct7 field
+    opcode :  u32, // Opcode field
+    funct3  : u32, // Funct3 field
+    funct7  : u32, // Funct7 field
+    rd : u32,
+    rs1 : u32,
+    
     pub inst_type : InstType // Instruction type
 }
 
